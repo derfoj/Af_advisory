@@ -1,0 +1,35 @@
+# Core packages
+numpy>=1.26.0
+pandas>=2.1.0
+requests>=2.31.0
+python-dotenv>=1.1.0
+
+# Web frameworks
+flask>=2.4.0
+django>=5.0.0
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0  # PostgreSQL driver
+
+# Machine Learning / Data Science
+scikit-learn>=1.3.0
+matplotlib>=3.8.0
+seaborn>=0.12.2
+tensorflow>=2.16.0
+torch>=2.1.0
+
+# NLP / LLM
+transformers>=5.0.0
+nltk>=3.9.0
+spacy>=3.6.0
+
+# Utilities
+black>=24.0.0  # code formatter
+pytest>=9.0.0  # testing
+ipython>=8.16.0  # interactive shell
+jupyterlab>=4.2.0  # notebooks
+
+# Optional: HTTP / API clients
+fastapi>=1.0.0
+uvicorn>=0.25.0
