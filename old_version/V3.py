@@ -222,7 +222,8 @@ class SQLConnectionWindow(QMainWindow):
             password=password,
             database=database if database else None,
             charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor
+            cursorclass=pymysql.cursors.DictCursor,
+            auth_plugin='mysql_native_password'
             )
             
             if connection.open:
@@ -364,7 +365,8 @@ class SQLProcessor:
                     password=self.main_window.sql_password,
                     charset='utf8mb4',
                     connect_timeout=10,
-                    cursorclass=pymysql.cursors.DictCursor
+                    cursorclass=pymysql.cursors.DictCursor,
+                    auth_plugin='mysql_native_password'
                 )
                 
                 # Créer la base de données si elle n'existe pas
@@ -437,7 +439,8 @@ class SQLProcessor:
                 connect_timeout=300,
                 read_timeout=300,
                 write_timeout=300,
-                cursorclass=pymysql.cursors.DictCursor
+                cursorclass=pymysql.cursors.DictCursor,
+                auth_plugin='mysql_native_password'
             )
             
             # Créer la base de données si elle n'existe pas
@@ -537,7 +540,7 @@ class DataProcessor:
                 return False, "Le fichier est vide"
                 
             # Connexion MySQL
-            db_url = f"mysql+pymysql://{self.main_window.sql_user}:{self.main_window.sql_password}@{self.main_window.sql_host}"
+            db_url = f"mysql+pymysql://{self.main_window.sql_user}:{self.main_window.sql_password}@{self.main_window.sql_host}/?auth_plugin=mysql_native_password"
             engine = create_engine(db_url)
             
             db_name = self.main_window.sql_database or "tempo"
@@ -545,7 +548,7 @@ class DataProcessor:
                 conn.execute(text(f"DROP DATABASE IF EXISTS `{db_name}`"))
                 conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{db_name}`"))
             
-            db_url = f"mysql+pymysql://{self.main_window.sql_user}:{self.main_window.sql_password}@{self.main_window.sql_host}/{db_name}"
+            db_url = f"mysql+pymysql://{self.main_window.sql_user}:{self.main_window.sql_password}@{self.main_window.sql_host}/{db_name}?auth_plugin=mysql_native_password"
             engine = create_engine(db_url)
             
             table_name = os.path.splitext(os.path.basename(file_path))[0].replace(" ", "_")[:64]
@@ -664,7 +667,7 @@ class AIProcessor:
         try:
             # Connexion à la base de données
             db_name = self.main_window.sql_database or "tempo"
-            db_url = f"mysql+pymysql://{self.main_window.sql_user}:{self.main_window.sql_password}@{self.main_window.sql_host}/{db_name}"
+            db_url = f"mysql+pymysql://{self.main_window.sql_user}:{self.main_window.sql_password}@{self.main_window.sql_host}/{db_name}?auth_plugin=mysql_native_password"
             
             try:
                 engine = create_engine(db_url)
