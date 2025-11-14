@@ -2,3 +2,6 @@
 
 #env variable 
 .env
+
+#old version 
+old_version/
