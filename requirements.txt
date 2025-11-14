@@ -1,35 +1,41 @@
-# Core packages
-numpy>=1.26.0
-pandas>=2.1.0
-requests>=2.31.0
-python-dotenv>=1.1.0
+# Core Python libraries (no installation needed)
+# sys
+# os
+# re
+# warnings
+# logging
 
-# Web frameworks
-flask>=2.4.0
-django>=5.0.0
+# --- Third-party dependencies ---
+PyQt5==5.15.10
+requests==2.31.0
+pymysql==1.1.0
+pandas==2.2.1
+PyPDF2==3.0.1
+SQLAlchemy==2.0.29
+python-dotenv==1.0.1
 
-# Database
-sqlalchemy>=2.0.0
-psycopg2-binary>=2.9.0  # PostgreSQL driver
+# LangChain ecosystem
+langchain==0.1.16
+langchain-community==0.0.38
+langchain-core==0.1.41
+langchain-text-splitters==0.0.2
 
-# Machine Learning / Data Science
-scikit-learn>=1.3.0
-matplotlib>=3.8.0
-seaborn>=0.12.2
-tensorflow>=2.16.0
-torch>=2.1.0
+# Mistral AI integration
+langchain-mistralai==0.0.7
+openai==1.12.0   # Needed for Mistral through OpenAI interface
 
-# NLP / LLM
-transformers>=5.0.0
-nltk>=3.9.0
-spacy>=3.6.0
+# Sentence-transformers + HuggingFace embeddings
+sentence-transformers==2.5.1
+langchain-huggingface==0.0.3
 
-# Utilities
-black>=24.0.0  # code formatter
-pytest>=9.0.0  # testing
-ipython>=8.16.0  # interactive shell
-jupyterlab>=4.2.0  # notebooks
+# Vector store
+faiss-cpu==1.7.4
 
-# Optional: HTTP / API clients
-fastapi>=1.0.0
-uvicorn>=0.25.0
+# Data handling
+openpyxl==3.1.2  # For Excel reading
+
+# Optional: MySQL driver for SQLAlchemy (you use pymysql)
+mysqlclient==2.2.4  # Optional alternative
+
+# --- Additional utilities imported in code ---
+regex==2024.4.16
