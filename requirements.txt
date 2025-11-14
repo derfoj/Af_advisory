@@ -1,3 +1,21 @@
+<<<<<<< HEAD
+langchain==0.1.20
+langchain-community==0.0.38
+langchain-core==0.1.52
+langchain-huggingface
+langchain-mistralai
+openai==1.30.1
+pandas==2.2.2
+PyPDF2==3.0.1
+PyQt5==5.15.10
+pymysql==1.1.1
+python-dotenv==1.0.1
+requests==2.31.0
+SQLAlchemy==2.0.30
+faiss-cpu==1.8.0
+sentence-transformers==2.7.0
+openpyxl==3.1.2
+=======
 # Core Python libraries (no installation needed)
 # sys
 # os
@@ -39,3 +57,4 @@ mysqlclient==2.2.4  # Optional alternative
 
 # --- Additional utilities imported in code ---
 regex==2024.4.16
+>>>>>>> c3079da2a626d4429ebdc6d79972b96c08d21411
