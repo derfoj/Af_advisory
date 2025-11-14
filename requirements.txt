@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 langchain==0.1.20
 langchain-community==0.0.38
 langchain-core==0.1.52
@@ -15,7 +14,7 @@ SQLAlchemy==2.0.30
 faiss-cpu==1.8.0
 sentence-transformers==2.7.0
 openpyxl==3.1.2
-=======
+
 # Core Python libraries (no installation needed)
 # sys
 # os
@@ -57,4 +56,3 @@ mysqlclient==2.2.4  # Optional alternative
 
 # --- Additional utilities imported in code ---
 regex==2024.4.16
->>>>>>> c3079da2a626d4429ebdc6d79972b96c08d21411
