@@ -11,7 +11,7 @@ import PyPDF2
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton,
     QLabel, QTextEdit, QLineEdit, QComboBox, QFileDialog, QMessageBox,
-    QTabWidget, QHBoxLayout, QGroupBox, QRadioButton, QSplitter, QFrame
+    QTabWidget, QHBoxLayout, QGroupBox, QSplitter, QFrame
 )
 from PyQt5.QtGui import QTextCursor, QFont
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
@@ -22,7 +22,7 @@ from sqlalchemy import create_engine, text
 from langchain_community.utilities import SQLDatabase
 from langchain_mistralai.chat_models import ChatMistralAI
 from langchain.chains import create_sql_query_chain
-from langchain_community.tools.sql_database.tool import QuerySQLDatabaseTool
+from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -652,6 +652,11 @@ class AIProcessor:
             logger.error("Erreur API Mistral : %s", e)
             return "Erreur lors de la génération de réponse pour le PDF."
     
+    def _basic_sql_response(self, question):
+        """Réponse de base si l'IA avancée échoue."""
+        logger.warning(f"Utilisation de la réponse SQL de base pour la question: {question}")
+        return "❌ Une erreur est survenue lors du traitement de la requête SQL. Les fonctionnalités d'IA avancées peuvent être indisponibles."
+
     def process_sql_query(self, question):
         if not AI_FEATURES_AVAILABLE:
             return self._basic_sql_response(question)
@@ -687,7 +692,7 @@ class AIProcessor:
                 sql_query = sql_match.group(1) if sql_match else response
                 
                 # Exécution de la requête
-                execute_query = QuerySQLDatabaseTool(db=db)
+                execute_query = QuerySQLDataBaseTool(db=db)
                 result = execute_query.invoke({"query": sql_query})
                 
                 # Formatage de la réponse
