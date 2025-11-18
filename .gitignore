@@ -2,4 +2,4 @@
 .clinic/
 
 #env variable 
-.env
+.venv
