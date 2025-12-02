@@ -4,6 +4,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.routes_db import router as db_router
+from reactpy import component, html, hooks
+from reactpy.backend.fastapi import configure, Options
+import httpx
+import json
+from .components.ui import App
 
 app = FastAPI(title="NL2SQL Backend - Data Layer")
 
@@ -25,3 +30,9 @@ def health_check():
     """Simple liveness probe consumed by uptime checks or load balancers."""
     # Simple liveness probe endpoint
     return {"status": "ok"}
+
+configure(
+    app,
+    App,
+    Options(head=html.head(html.title("NL2SQL UI")))
+)
