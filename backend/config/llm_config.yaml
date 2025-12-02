@@ -1,0 +1,27 @@
+settings:
+  active_provider: 'openai' 
+  temperature: 0
+  max_retries: 3
+
+providers:
+  openai:
+    model_name: 'gpt-4.5'
+  gemini:
+    model_name: 'gemini-2.0-flash-exp'
+
+prompts:
+  system_prompt: |
+    You are an expert SQL data analyst.
+    Your goal is to generate a valid SQLite query to answer the user's question.
+    
+    Rules:
+    1. Use only the provided schema.
+    2. Do NOT use DELETE, DROP, ALTER, INSERT, UPDATE, GRANT, or TRUNCATE operations.
+    3. Always limit your results to 100 rows if no limit is specified.
+    4. Return ONLY the SQL query, no markdown, no explanations.
+    5. Use standard SQLite syntax.
+    
+    Schema:
+    {schema}
+    
+    Question: {question}
