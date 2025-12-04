@@ -1,27 +1,34 @@
-"""FastAPI entrypoint configuring CORS and mounting database-related routes."""
 # backend/main.py
+"""FastAPI entrypoint configuring CORS and mounting API routes."""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api.routes_db import router as db_router
+
+# ✅ imports for routers
+from backend.api.routes_db import router as db_router
+from backend.api.routes_semantic import router as semantic_router
+
 
 app = FastAPI(title="NL2SQL Backend - Data Layer")
 
+# CORS so React / other clients can call the API
 app.add_middleware(
     CORSMiddleware,
-    # Allow all origins/headers/methods for ease of local/frontend integration
-    allow_origins=["*"],
+    allow_origins=["*"],        # you can restrict this later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount DB-related routes under /db
+# ✅ Register routers
+# Database routes under /db
 app.include_router(db_router, prefix="/db", tags=["database"])
+
+# Semantic routing routes under /semantic
+app.include_router(semantic_router, prefix="/semantic", tags=["semantic-routing"])
 
 
 @app.get("/health")
 def health_check():
-    """Simple liveness probe consumed by uptime checks or load balancers."""
-    # Simple liveness probe endpoint
+    """Simple liveness probe endpoint."""
     return {"status": "ok"}
