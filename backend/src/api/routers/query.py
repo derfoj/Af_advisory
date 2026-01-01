@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Body
-from typing import Dict, Any
+from typing import Dict, Any  # noqa: F401
 
 from api.schemas import QueryRequest
 from utils.validators import validate_db_path
@@ -11,7 +11,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-# Instantiate WorkflowEngine. 
+# Instantiate WorkflowEngine.
 # In a larger app, this might be a dependency injection.
 workflow_engine = WorkflowEngine()
 

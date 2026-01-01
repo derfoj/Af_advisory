@@ -29,7 +29,8 @@ def convert_to_sqlite(file_path: str, output_dir: str) -> str:
         if ext == '.csv':
             df = pd.read_csv(file_path)
             # Sanitize table name (simple version)
-            table_name = "".join([c if c.isalnum() else "_" for c in name])
+            raw_name = "".join([c if c.isalnum() else "_" for c in name])
+            table_name = f"data_{raw_name}"
             df.to_sql(table_name, conn, if_exists='replace', index=False)
             
         elif ext in ['.xls', '.xlsx']:
@@ -37,7 +38,8 @@ def convert_to_sqlite(file_path: str, output_dir: str) -> str:
             for sheet_name in xls.sheet_names:
                 df = pd.read_excel(xls, sheet_name=sheet_name)
                 # Sanitize sheet name for table name
-                table_name = "".join([c if c.isalnum() else "_" for c in sheet_name])
+                raw_sheet_name = "".join([c if c.isalnum() else "_" for c in sheet_name])
+                table_name = f"data_{raw_sheet_name}"
                 df.to_sql(table_name, conn, if_exists='replace', index=False)
         else:
             raise ValueError(f"Unsupported file format: {ext}")

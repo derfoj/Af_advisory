@@ -1,5 +1,121 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Database, MessageSquare, Upload, Send, FileSpreadsheet, Trash2, Plus, Bot, User, Loader2 } from 'lucide-react';
+import { Database, MessageSquare, Upload, Send, FileSpreadsheet, Trash2, Plus, Bot, User, Loader2, ChevronDown, ChevronRight, Terminal } from 'lucide-react';
+
+const ChatMessage = ({ message }) => {
+  const [isProcessOpen, setIsProcessOpen] = useState(false);
+  const isUser = message.role === 'user';
+
+  if (isUser) {
+    return (
+      <div className="flex flex-row-reverse gap-3">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-600">
+          <User className="w-5 h-5 text-white" />
+        </div>
+        <div className="max-w-[80%] rounded-2xl p-4 shadow-sm bg-indigo-600 text-white rounded-tr-none">
+          <p className="whitespace-pre-wrap font-sans text-sm">{message.content.text || message.content}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Assistant Message Logic
+  const { intro, data, process, error } = message.content;
+
+  return (
+    <div className="flex gap-3">
+      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-600">
+        <Bot className="w-5 h-5 text-white" />
+      </div>
+      <div className="flex-1 max-w-[85%] space-y-2">
+        <div className="rounded-2xl p-5 shadow-sm bg-white text-slate-800 border border-slate-200 rounded-tl-none space-y-4">
+
+          {/* 1. Intro Text */}
+          <p className="font-medium text-slate-800">
+            {intro || (error ? "Une erreur est survenue." : "Voici les résultats :")}
+          </p>
+
+          {/* 2. Data Table / Result */}
+          {error ? (
+            <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">
+              {error}
+            </div>
+          ) : data && data.columns && data.rows ? (
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                    <tr>
+                      {data.columns.map((col, idx) => (
+                        <th key={idx} className="px-4 py-2 font-semibold whitespace-nowrap">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {data.rows.slice(0, 10).map((row, rIdx) => (
+                      <tr key={rIdx} className="hover:bg-slate-50">
+                        {row.map((cell, cIdx) => (
+                          <td key={cIdx} className="px-4 py-2 text-slate-700 whitespace-nowrap">
+                            {cell !== null ? String(cell) : <span className="text-slate-400 italic">null</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {data.rows.length > 10 && (
+                <div className="bg-slate-50 p-2 text-xs text-center text-slate-500 border-t border-slate-200">
+                  Affichage des 10 premières lignes sur {data.rows.length}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-slate-500 italic">Aucune donnée à afficher.</div>
+          )}
+
+        </div>
+
+        {/* 3. Collapsible Process View */}
+        {process && (
+          <div className="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+            <button
+              onClick={() => setIsProcessOpen(!isProcessOpen)}
+              className="w-full flex items-center gap-2 p-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              {isProcessOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              <Terminal className="w-3 h-3" />
+              Voir le processus de raisonnement
+            </button>
+
+            {isProcessOpen && (
+              <div className="p-3 border-t border-slate-200 space-y-3 animate-in slide-in-from-top-2 duration-200">
+
+                {process.sql && (
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">SQL Généré</p>
+                    <div className="bg-slate-900 rounded-md p-3 overflow-x-auto">
+                      <code className="text-xs font-mono text-emerald-400 whitespace-pre">{process.sql}</code>
+                    </div>
+                  </div>
+                )}
+
+                {process.schema && (
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Table Utilisée</p>
+                    <code className="text-xs bg-white border border-slate-200 px-1 py-0.5 rounded text-slate-600">
+                      {process.schema_summary || "Schéma complet"}
+                    </code>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 function App() {
   const [sessions, setSessions] = useState([]);
@@ -81,7 +197,7 @@ function App() {
     e.preventDefault();
     if (!input.trim() || isLoading || !activeSession) return;
 
-    const userMessage = { role: 'user', content: input };
+    const userMessage = { role: 'user', content: { text: input } };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
@@ -92,50 +208,79 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: userMessage.content,
+          question: userMessage.content.text,
           db_path: activeSession.dbPath,
-          chat_history: messages
+          chat_history: messages.map(m => {
+            if (typeof m.content === 'string') return { role: m.role, content: m.content };
+
+            // Serialize structured content to string for LLM context
+            let textContent = m.content.text || m.content.intro || "";
+            if (m.content.process?.sql) {
+              textContent += `\nSQL: ${m.content.process.sql}`;
+            }
+            if (m.content.data?.rows) {
+              textContent += `\n(Returned ${m.content.data.rows.length} rows)`;
+            }
+            return { role: m.role, content: textContent };
+          })
         }),
       });
 
-      const data = await response.json();
-      console.log('API Response:', data);
-      let assistantContent = "Je n'ai pas pu traiter cette requête.";
+      const rawData = await response.json();
+      console.log('API Response:', rawData);
 
-      if (data.result) {
-        // Format the result based on what we got
-        if (data.result.data && Array.isArray(data.result.data)) {
-          if (data.result.data.length === 0) {
-            assistantContent = "Aucun résultat trouvé.";
-          } else {
-            // Format as a nice table-like output
-            const columns = data.result.columns || Object.keys(data.result.data[0]);
-            const rows = data.result.data.slice(0, 20); // Limit display
-
-            let output = `📊 Résultats (${data.result.data.length} lignes):\n\n`;
-            output += columns.join(' | ') + '\n';
-            output += columns.map(() => '---').join(' | ') + '\n';
-            rows.forEach(row => {
-              output += columns.map(col => row[col] ?? 'null').join(' | ') + '\n';
-            });
-            if (data.result.data.length > 20) {
-              output += `\n... et ${data.result.data.length - 20} lignes de plus`;
-            }
-            assistantContent = output;
-          }
-        } else if (data.result.message) {
-          assistantContent = data.result.message;
-        } else {
-          // Fallback: stringify the result
-          assistantContent = JSON.stringify(data.result, null, 2);
+      // Structure the assistant response
+      let assistantMessage = {
+        role: 'assistant',
+        content: {
+          intro: "Voici les résultats de votre requête :",
+          data: null,
+          process: null,
+          error: null
         }
-      } else if (data.error) {
-        assistantContent = `❌ Erreur: ${data.error}`;
+      };
+
+      if (rawData.result) {
+        // Handle Data
+        if (rawData.result.data) {
+          const columns = rawData.result.columns || Object.keys(rawData.result.data[0] || {});
+          const rows = rawData.result.data.map(row => columns.map(col => row[col])); // safe map to array
+
+          assistantMessage.content.data = {
+            columns: columns,
+            rows: rows
+          };
+
+          // Intro logic
+          if (rows.length === 1 && columns.length === 1) {
+            assistantMessage.content.intro = `Le résultat est : ${rows[0][0]}`;
+          } else {
+            assistantMessage.content.intro = `J'ai trouvé ${rows.length} résultats correspondants :`;
+          }
+
+        } else if (rawData.result.message) {
+          assistantMessage.content.intro = rawData.result.message;
+        }
+
+        // Handle Process (SQL)
+        if (rawData.sql) {
+          assistantMessage.content.process = {
+            sql: rawData.sql,
+            schema_summary: "Table principale" // Placeholder until backend sends more info
+          };
+        }
+
+      } else if (rawData.error) {
+        assistantMessage.content.error = rawData.error;
+        assistantMessage.content.intro = "Je n'ai pas pu exécuter cette requête.";
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: assistantContent }]);
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Erreur réseau. Veuillez réessayer." }]);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: { error: "Erreur de communication avec le serveur.", intro: "Oups !" }
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -262,21 +407,11 @@ function App() {
               </div>
             ) : (
               /* Chat Messages */
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {messages.map((msg, idx) => (
-                  <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-indigo-600' : 'bg-emerald-600'
-                      }`}>
-                      {msg.role === 'user' ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-white" />}
-                    </div>
-                    <div className={`max-w-[70%] rounded-2xl p-4 shadow-sm ${msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-tr-none'
-                      : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
-                      }`}>
-                      <pre className="whitespace-pre-wrap font-sans text-sm">{msg.content}</pre>
-                    </div>
-                  </div>
+                  <ChatMessage key={idx} message={msg} />
                 ))}
+
                 {isLoading && (
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
