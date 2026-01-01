@@ -8,3 +8,8 @@ langchain-openai
 langchain-google-genai
 langgraph
 pydantic
+pandas
+openpyxl
+python-multipart
+pytest
+httpx

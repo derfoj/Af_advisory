@@ -13,7 +13,10 @@ class ConfigLoader:
         return cls._instance
 
     def _load_config(self):
-        config_path = os.path.join(os.path.dirname(__file__), 'config', 'llm_config.yaml')
+        # Assuming config is at backend/config/llm_config.yaml and this file is at backend/src/text_to_sql/config_loader.py
+        # We need to go up two levels from text_to_sql to src to backend
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        config_path = os.path.join(base_dir, 'config', 'llm_config.yaml')
         try:
             with open(config_path, 'r') as file:
                 self._config = yaml.safe_load(file)

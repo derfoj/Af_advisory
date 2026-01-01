@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
-from config_loader import GLOBAL_CONFIG
+from .config_loader import GLOBAL_CONFIG
 
 load_dotenv()
 
