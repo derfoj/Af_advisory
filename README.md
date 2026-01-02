@@ -8,7 +8,7 @@
 
 **AF-Advisory** est une application intelligente qui permet aux utilisateurs d'analyser leurs données (CSV, Excel) en posant simplement des questions en langage naturel. Fini le SQL complexe : l'IA génère, corrige et exécute les requêtes pour vous.
 
-![backend/src/img/nl2sql.mp4](backend/src/img/nl2sql.mp4)
+![Demo NL2SQL](backend/src/img/nl2sql.mp4)
 
 ---
 
@@ -147,4 +147,5 @@ Les contributions sont les bienvenues !
 
 ## 📝 License
 Distribué sous la licence MIT. Voir `LICENSE` pour plus d'informations.
+
 
