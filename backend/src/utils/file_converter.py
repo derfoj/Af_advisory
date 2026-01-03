@@ -27,20 +27,32 @@ def convert_to_sqlite(file_path: str, output_dir: str) -> str:
     
     try:
         if ext == '.csv':
-            df = pd.read_csv(file_path)
-            # Sanitize table name (simple version)
+            # Use chunking and multi-row inserts for performance
+            # SQLite limit is usually 32766 variables. Safe chunk ~= 500 rows for typical wide tables.
+            chunk_size = 1000 
+            first_chunk = True
+            
+            # Sanitize table name
             raw_name = "".join([c if c.isalnum() else "_" for c in name])
             table_name = f"data_{raw_name}"
-            df.to_sql(table_name, conn, if_exists='replace', index=False)
+
+            with pd.read_csv(file_path, chunksize=chunk_size) as reader:
+                for chunk in reader:
+                    if first_chunk:
+                        chunk.to_sql(table_name, conn, if_exists='replace', index=False, method='multi')
+                        first_chunk = False
+                    else:
+                        chunk.to_sql(table_name, conn, if_exists='append', index=False, method='multi')
             
         elif ext in ['.xls', '.xlsx']:
             xls = pd.ExcelFile(file_path)
             for sheet_name in xls.sheet_names:
                 df = pd.read_excel(xls, sheet_name=sheet_name)
-                # Sanitize sheet name for table name
+                # Sanitize sheet name
                 raw_sheet_name = "".join([c if c.isalnum() else "_" for c in sheet_name])
                 table_name = f"data_{raw_sheet_name}"
-                df.to_sql(table_name, conn, if_exists='replace', index=False)
+                # Write in chunks using method='multi'
+                df.to_sql(table_name, conn, if_exists='replace', index=False, chunksize=1000, method='multi')
         else:
             raise ValueError(f"Unsupported file format: {ext}")
             

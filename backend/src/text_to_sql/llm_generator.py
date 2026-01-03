@@ -1,8 +1,9 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.messages import BaseMessage
-from typing import List
+from typing import List, Dict, Any
 import re
+import json
 from .config_loader import GLOBAL_CONFIG
 from .llm_provider import LLMProvider
 
@@ -48,7 +49,10 @@ class LLMGenerator:
         
         return sql
 
-    def generate_query(self, question: str, schema: str, chat_history: List[BaseMessage] = [], error: str = "") -> str:
+    def generate_query(self, question: str, schema: str, chat_history: List[BaseMessage] = None, error: str = "") -> str:
+        if chat_history is None:
+            chat_history = []
+            
         correction_instruction = ""
         if error:
             correction_instruction = f"\n\nPREVIOUS ERROR: {error}\nCORRECTION: Please fix the SQL query to resolve the error above."
@@ -70,3 +74,37 @@ class LLMGenerator:
         print(f"Cleaned SQL: {clean_sql}")
         
         return clean_sql
+
+    def generate_explanation(self, question: str, sql: str, data: List[Dict[str, Any]]) -> str:
+        """
+        Generates a natural language explanation of the data results.
+        """
+        # Load prompt from config or use default
+        prompt_template = GLOBAL_CONFIG.get('prompts', {}).get('answer_prompt')
+        
+        if not prompt_template:
+            prompt_template = (
+                "You are a helpful data assistant.\n"
+                "User Question: {question}\n"
+                "Data Result: {data_preview}\n\n"
+                "Provide a concise natural language answer based on the data."
+            )
+
+        # Format data preview (limit to first 5 rows to save tokens)
+        data_preview = json.dumps(data[:5], indent=2, default=str)
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", prompt_template),
+            ("human", "Here is the data result. Please explain it.")
+        ])
+        
+        chain = prompt | self.llm | StrOutputParser()
+        
+        print(f"--- GENERATING EXPLANATION ---")
+        explanation = chain.invoke({
+            "question": question,
+            "sql": sql,
+            "data_preview": data_preview
+        })
+        print(f"Explanation: {explanation}")
+        return explanation

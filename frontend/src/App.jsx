@@ -1,121 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Database, MessageSquare, Upload, Send, FileSpreadsheet, Trash2, Plus, Bot, User, Loader2, ChevronDown, ChevronRight, Terminal } from 'lucide-react';
+import { Database, Send, Plus, Loader2, Upload } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 
-const ChatMessage = ({ message }) => {
-  const [isProcessOpen, setIsProcessOpen] = useState(false);
-  const isUser = message.role === 'user';
-
-  if (isUser) {
-    return (
-      <div className="flex flex-row-reverse gap-3">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-indigo-600">
-          <User className="w-5 h-5 text-white" />
-        </div>
-        <div className="max-w-[80%] rounded-2xl p-4 shadow-sm bg-indigo-600 text-white rounded-tr-none">
-          <p className="whitespace-pre-wrap font-sans text-sm">{message.content.text || message.content}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Assistant Message Logic
-  const { intro, data, process, error } = message.content;
-
-  return (
-    <div className="flex gap-3">
-      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-600">
-        <Bot className="w-5 h-5 text-white" />
-      </div>
-      <div className="flex-1 max-w-[85%] space-y-2">
-        <div className="rounded-2xl p-5 shadow-sm bg-white text-slate-800 border border-slate-200 rounded-tl-none space-y-4">
-
-          {/* 1. Intro Text */}
-          <p className="font-medium text-slate-800">
-            {intro || (error ? "Une erreur est survenue." : "Voici les résultats :")}
-          </p>
-
-          {/* 2. Data Table / Result */}
-          {error ? (
-            <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200">
-              {error}
-            </div>
-          ) : data && data.columns && data.rows ? (
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                    <tr>
-                      {data.columns.map((col, idx) => (
-                        <th key={idx} className="px-4 py-2 font-semibold whitespace-nowrap">{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {data.rows.slice(0, 10).map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-slate-50">
-                        {row.map((cell, cIdx) => (
-                          <td key={cIdx} className="px-4 py-2 text-slate-700 whitespace-nowrap">
-                            {cell !== null ? String(cell) : <span className="text-slate-400 italic">null</span>}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {data.rows.length > 10 && (
-                <div className="bg-slate-50 p-2 text-xs text-center text-slate-500 border-t border-slate-200">
-                  Affichage des 10 premières lignes sur {data.rows.length}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-slate-500 italic">Aucune donnée à afficher.</div>
-          )}
-
-        </div>
-
-        {/* 3. Collapsible Process View */}
-        {process && (
-          <div className="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
-            <button
-              onClick={() => setIsProcessOpen(!isProcessOpen)}
-              className="w-full flex items-center gap-2 p-2 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              {isProcessOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-              <Terminal className="w-3 h-3" />
-              Voir le processus de raisonnement
-            </button>
-
-            {isProcessOpen && (
-              <div className="p-3 border-t border-slate-200 space-y-3 animate-in slide-in-from-top-2 duration-200">
-
-                {process.sql && (
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">SQL Généré</p>
-                    <div className="bg-slate-900 rounded-md p-3 overflow-x-auto">
-                      <code className="text-xs font-mono text-emerald-400 whitespace-pre">{process.sql}</code>
-                    </div>
-                  </div>
-                )}
-
-                {process.schema && (
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Table Utilisée</p>
-                    <code className="text-xs bg-white border border-slate-200 px-1 py-0.5 rounded text-slate-600">
-                      {process.schema_summary || "Schéma complet"}
-                    </code>
-                  </div>
-                )}
-
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+import Sidebar from './components/Sidebar';
+import ChatMessage from './components/ChatMessage';
+import DataPreview from './components/DataPreview';
+import ThinkingIndicator from './components/ThinkingIndicator';
+import SuggestionChips from './components/SuggestionChips';
 
 function App() {
   const [sessions, setSessions] = useState([]);
@@ -126,6 +17,7 @@ function App() {
   const [dataPreview, setDataPreview] = useState(null);
   const [dataSummary, setDataSummary] = useState(null);
   const [showPreview, setShowPreview] = useState(true);
+
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -133,7 +25,7 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(scrollToBottom, [messages]);
+  useEffect(scrollToBottom, [messages, isLoading]); // Scroll on loading state change too (for thinking indicator)
 
   // Load data preview when session changes
   useEffect(() => {
@@ -155,6 +47,7 @@ function App() {
       if (summaryRes.ok) setDataSummary(await summaryRes.json());
     } catch (err) {
       console.error('Failed to load preview:', err);
+      toast.error("Impossible de charger l'aperçu des données.");
     }
   };
 
@@ -162,6 +55,7 @@ function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const toastId = toast.loading("Chargement du fichier...");
     setIsLoading(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -185,12 +79,22 @@ function App() {
         setActiveSession(newSession);
         setMessages([]);
         setShowPreview(true);
+        toast.success("Fichier importé avec succès !", { id: toastId });
+      } else {
+        throw new Error("Upload failed");
       }
     } catch (err) {
       console.error('Upload failed:', err);
+      toast.error("Échec de l'importation du fichier.", { id: toastId });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSuggestionSelect = (suggestion) => {
+    setInput(suggestion);
+    // Optional: Auto-submit needed? Let's just fill input for now so user can confirm.
+    // handleSubmit(new Event('submit')); 
   };
 
   const handleSubmit = async (e) => {
@@ -213,7 +117,6 @@ function App() {
           chat_history: messages.map(m => {
             if (typeof m.content === 'string') return { role: m.role, content: m.content };
 
-            // Serialize structured content to string for LLM context
             let textContent = m.content.text || m.content.intro || "";
             if (m.content.process?.sql) {
               textContent += `\nSQL: ${m.content.process.sql}`;
@@ -227,9 +130,7 @@ function App() {
       });
 
       const rawData = await response.json();
-      console.log('API Response:', rawData);
 
-      // Structure the assistant response
       let assistantMessage = {
         role: 'assistant',
         content: {
@@ -244,18 +145,19 @@ function App() {
         // Handle Data
         if (rawData.result.data) {
           const columns = rawData.result.columns || Object.keys(rawData.result.data[0] || {});
-          const rows = rawData.result.data.map(row => columns.map(col => row[col])); // safe map to array
+          const rows = rawData.result.data.map(row => columns.map(col => row[col]));
 
-          assistantMessage.content.data = {
-            columns: columns,
-            rows: rows
-          };
+          assistantMessage.content.data = { columns, rows };
 
-          // Intro logic
           if (rows.length === 1 && columns.length === 1) {
             assistantMessage.content.intro = `Le résultat est : ${rows[0][0]}`;
           } else {
             assistantMessage.content.intro = `J'ai trouvé ${rows.length} résultats correspondants :`;
+          }
+
+          // Override intro if the backend provided a specific explanation
+          if (rawData.result.message) {
+            assistantMessage.content.intro = rawData.result.message;
           }
 
         } else if (rawData.result.message) {
@@ -266,7 +168,7 @@ function App() {
         if (rawData.sql) {
           assistantMessage.content.process = {
             sql: rawData.sql,
-            schema_summary: "Table principale" // Placeholder until backend sends more info
+            schema_summary: "Table principale"
           };
         }
 
@@ -276,11 +178,13 @@ function App() {
       }
 
       setMessages(prev => [...prev, assistantMessage]);
+
     } catch (error) {
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: { error: "Erreur de communication avec le serveur.", intro: "Oups !" }
       }]);
+      toast.error("Erreur de connexion au serveur.");
     } finally {
       setIsLoading(false);
     }
@@ -292,138 +196,68 @@ function App() {
       setActiveSession(null);
       setMessages([]);
     }
+    toast.info("Session supprimée.");
   };
 
   return (
-    <div className="h-screen flex flex-col bg-slate-100">
+    <div className="h-screen flex flex-col bg-slate-50 font-sans">
+      <Toaster position="top-right" richColors />
+
       {/* Header */}
-      <header className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white py-4 px-6 shadow-lg">
-        <h1 className="text-2xl font-bold text-center tracking-wide">
-          Natural Language to SQL Query
-        </h1>
+      <header className="bg-white border-b border-slate-200 py-3 px-6 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-200">
+            <Database className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-lg font-bold text-slate-800 tracking-tight">
+            AF-Advisory <span className="text-slate-400 font-normal text-xs ml-2">NL2SQL Assistant</span>
+          </h1>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
-        <aside className="w-72 bg-white border-r border-slate-200 flex flex-col">
-          <div className="p-4 border-b border-slate-200">
-            <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4" />
-              Historique des fichiers
-            </h2>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {sessions.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">
-                Aucun fichier chargé
-              </p>
-            ) : (
-              sessions.map(session => (
-                <div
-                  key={session.id}
-                  onClick={() => { setActiveSession(session); setMessages(session.messages || []); setShowPreview(true); }}
-                  className={`p-3 rounded-lg cursor-pointer transition-all group ${activeSession?.id === session.id
-                    ? 'bg-indigo-50 border border-indigo-200'
-                    : 'hover:bg-slate-50 border border-transparent'
-                    }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-800 truncate text-sm">{session.filename}</p>
-                      <p className="text-xs text-slate-400 mt-1">{session.timestamp}</p>
-                    </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </aside>
+        <Sidebar
+          sessions={sessions}
+          activeSession={activeSession}
+          setActiveSession={setActiveSession}
+          setMessages={setMessages}
+          setShowPreview={setShowPreview}
+          deleteSession={deleteSession}
+        />
 
         {/* Main Workspace */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {!activeSession ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                <Database className="w-16 h-16 mb-4 opacity-50" />
-                <p className="text-lg">Chargez un fichier pour commencer</p>
-                <p className="text-sm mt-2">Utilisez le bouton ci-dessous pour ajouter un fichier CSV ou Excel</p>
-              </div>
-            ) : showPreview && dataPreview ? (
-              <div className="space-y-6">
-                {/* Summary Cards */}
-                {dataSummary && (
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <p className="text-sm text-slate-500">Table</p>
-                      <p className="text-xl font-semibold text-slate-800">{dataSummary.table_name}</p>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <p className="text-sm text-slate-500">Lignes</p>
-                      <p className="text-xl font-semibold text-slate-800">{dataSummary.row_count?.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                      <p className="text-sm text-slate-500">Colonnes</p>
-                      <p className="text-xl font-semibold text-slate-800">{dataSummary.column_count}</p>
-                    </div>
-                  </div>
-                )}
+        <main className="flex-1 flex flex-col overflow-hidden bg-slate-50/50 relative">
 
-                {/* Data Table */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="p-4 border-b border-slate-100 bg-slate-50">
-                    <h3 className="font-semibold text-slate-800">Aperçu des données</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 border-b border-slate-100">
-                        <tr>
-                          {dataPreview.columns?.map((col, idx) => (
-                            <th key={idx} className="px-4 py-3 text-left font-medium text-slate-600">{col}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {dataPreview.rows?.map((row, rowIdx) => (
-                          <tr key={rowIdx} className="hover:bg-slate-50">
-                            {row.map((cell, cellIdx) => (
-                              <td key={cellIdx} className="px-4 py-3 text-slate-700">
-                                {cell !== null ? String(cell) : <span className="text-slate-400 italic">null</span>}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+            {!activeSession ? (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4 animate-in fade-in duration-500">
+                <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-xl shadow-slate-200 mb-4 border border-slate-100">
+                  <Upload className="w-10 h-10 text-indigo-500" />
                 </div>
+                <h3 className="text-xl font-semibold text-slate-700">Aucun fichier sélectionné</h3>
+                <p className="text-sm text-slate-400 max-w-md text-center">
+                  Importez un fichier CSV ou Excel via la barre latérale ou le bouton ci-dessous pour commencer l'analyse.
+                </p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 font-medium text-sm flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Sélectionner un fichier
+                </button>
               </div>
+            ) : showPreview ? (
+              <DataPreview dataPreview={dataPreview} dataSummary={dataSummary} />
             ) : (
               /* Chat Messages */
-              <div className="space-y-6">
+              <div className="space-y-8 max-w-4xl mx-auto pb-12">
                 {messages.map((msg, idx) => (
                   <ChatMessage key={idx} message={msg} />
                 ))}
 
                 {isLoading && (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
-                      <Bot className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm">
-                      <div className="flex gap-1">
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                    </div>
+                  <div className="pl-2">
+                    <ThinkingIndicator />
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -432,36 +266,44 @@ function App() {
           </div>
 
           {/* Bottom Input Area */}
-          <div className="p-4 bg-white border-t border-slate-200">
-            <form onSubmit={handleSubmit} className="flex gap-3 items-center">
-              <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv,.xlsx,.xls" className="hidden" />
+          <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-20">
+            <div className="max-w-4xl mx-auto space-y-4">
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="p-3 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                title="Ajouter un fichier"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              {/* Suggestions (Only show when not loading and session active) */}
+              {!isLoading && activeSession && messages.length === 0 && (
+                <SuggestionChips onSelect={(text) => setInput(text)} />
+              )}
 
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={activeSession ? "Posez votre question sur les données..." : "Chargez d'abord un fichier..."}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-slate-50 disabled:opacity-50"
-                disabled={!activeSession || isLoading}
-              />
+              <form onSubmit={handleSubmit} className="flex gap-3 items-center relative">
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv,.xlsx,.xls" className="hidden" />
 
-              <button
-                type="submit"
-                disabled={!input.trim() || isLoading || !activeSession}
-                className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-600/20"
-              >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              </button>
-            </form>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3 rounded-xl bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-all border border-slate-200"
+                  title="Ajouter un nouveau fichier"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={activeSession ? "Posez votre question (ex: 'Top 5 des ventes')..." : "Chargez d'abord un fichier..."}
+                  className="flex-1 px-5 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white shadow-sm text-slate-700 placeholder:text-slate-400 transition-all"
+                  disabled={!activeSession || isLoading}
+                />
+
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading || !activeSession}
+                  className="absolute right-2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-200"
+                >
+                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                </button>
+              </form>
+            </div>
           </div>
         </main>
       </div>

@@ -33,7 +33,8 @@ def get_data_preview(db_path: str, limit: int = 10):
         if not os.path.exists(full_path):
             raise HTTPException(status_code=404, detail="Database not found")
 
-        conn = sqlite3.connect(full_path)
+        # Use check_same_thread=False to avoid issues with FastAPI threads
+        conn = sqlite3.connect(full_path, check_same_thread=False)
 
         # Get the first table name
         cursor = conn.cursor()

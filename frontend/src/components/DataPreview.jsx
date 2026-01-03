@@ -1,54 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Table, Info, Loader2 } from 'lucide-react';
 
-const DataPreview = ({ dbPath }) => {
-    const [preview, setPreview] = useState(null);
-    const [summary, setSummary] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const DataPreview = ({ dataPreview, dataSummary }) => {
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!dbPath) return;
-
-            setLoading(true);
-            setError(null);
-
-            try {
-                const [previewRes, summaryRes] = await Promise.all([
-                    fetch(`http://localhost:8000/data/preview?db_path=${encodeURIComponent(dbPath)}&limit=5`),
-                    fetch(`http://localhost:8000/data/summary?db_path=${encodeURIComponent(dbPath)}`)
-                ]);
-
-                if (!previewRes.ok || !summaryRes.ok) {
-                    throw new Error('Failed to load data');
-                }
-
-                setPreview(await previewRes.json());
-                setSummary(await summaryRes.json());
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [dbPath]);
-
-    if (loading) {
+    // If we are waiting for data
+    if (!dataPreview && !dataSummary) {
         return (
             <div className="flex items-center justify-center p-8">
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                <span className="ml-2 text-slate-600">Loading data preview...</span>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="p-4 bg-red-50 text-red-600 rounded-lg">
-                Error: {error}
+                <span className="ml-2 text-slate-600">Loading data...</span>
             </div>
         );
     }
@@ -56,43 +16,43 @@ const DataPreview = ({ dbPath }) => {
     return (
         <div className="space-y-6">
             {/* Summary Cards */}
-            {summary && (
+            {dataSummary && (
                 <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm animate-in zoom-in-50 duration-300">
                         <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
                             <Table className="w-4 h-4" />
                             Table
                         </div>
-                        <p className="text-xl font-semibold text-slate-800">{summary.table_name || 'N/A'}</p>
+                        <p className="text-xl font-semibold text-slate-800">{dataSummary.table_name || 'N/A'}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm animate-in zoom-in-50 duration-300 delay-75">
                         <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
                             <Info className="w-4 h-4" />
-                            Rows
+                            Lignes
                         </div>
-                        <p className="text-xl font-semibold text-slate-800">{summary.row_count?.toLocaleString() || 0}</p>
+                        <p className="text-xl font-semibold text-slate-800">{dataSummary.row_count?.toLocaleString() || 0}</p>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm animate-in zoom-in-50 duration-300 delay-150">
                         <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
                             <Info className="w-4 h-4" />
-                            Columns
+                            Colonnes
                         </div>
-                        <p className="text-xl font-semibold text-slate-800">{summary.column_count || 0}</p>
+                        <p className="text-xl font-semibold text-slate-800">{dataSummary.column_count || 0}</p>
                     </div>
                 </div>
             )}
 
             {/* Data Table */}
-            {preview && preview.columns?.length > 0 && (
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {dataPreview && dataPreview.columns?.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
                     <div className="p-4 border-b border-slate-100 bg-slate-50">
-                        <h3 className="font-semibold text-slate-800">Data Preview (First 5 rows)</h3>
+                        <h3 className="font-semibold text-slate-800">Aperçu des données (5 premières lignes)</h3>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead className="bg-slate-50 border-b border-slate-100">
                                 <tr>
-                                    {preview.columns.map((col, idx) => (
+                                    {dataPreview.columns.map((col, idx) => (
                                         <th key={idx} className="px-4 py-3 text-left font-medium text-slate-600">
                                             {col}
                                         </th>
@@ -100,7 +60,7 @@ const DataPreview = ({ dbPath }) => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {preview.rows.map((row, rowIdx) => (
+                                {dataPreview.rows.map((row, rowIdx) => (
                                     <tr key={rowIdx} className="hover:bg-slate-50 transition-colors">
                                         {row.map((cell, cellIdx) => (
                                             <td key={cellIdx} className="px-4 py-3 text-slate-700">

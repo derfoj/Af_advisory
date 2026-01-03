@@ -16,6 +16,7 @@ class AgentState(TypedDict):
     retry_count: int
     chat_history: List[BaseMessage]
     db_path: str
+    explanation: str  # Added explanation field
 
 class WorkflowEngine:
     def __init__(self):
@@ -29,19 +30,25 @@ class WorkflowEngine:
         # Define Nodes
         workflow.add_node("generate", self.generate_step)
         workflow.add_node("execute", self.execute_step)
+        workflow.add_node("explain", self.explain_step)
 
         # Define Edges
         workflow.set_entry_point("generate")
         workflow.add_edge("generate", "execute")
+        
+        # Conditional edge Check Execution -> (Retry / Explain / Error)
         workflow.add_conditional_edges(
             "execute",
             self.check_execution_status,
             {
-                "success": END,
+                "success": "explain", # Go to explanation on success
                 "retry": "generate",
                 "error": END
             }
         )
+        
+        # Explain -> END
+        workflow.add_edge("explain", END)
 
         return workflow.compile()
 
@@ -78,6 +85,25 @@ class WorkflowEngine:
         
         return {"result": result, "error": None, "sql": safe_sql}
 
+    def explain_step(self, state: AgentState) -> AgentState:
+        print("--- GENERATING EXPLANATION ---")
+        result_data = state['result'].get('data', [])
+        
+    
+        if not result_data:
+             return {"result": {"message": "No data found matching the query.", "data": []}}
+
+        explanation = self.llm_generator.generate_explanation(
+            question=state['question'],
+            sql=state['sql'],
+            data=result_data
+        )
+        
+        # Augment the result object with the message/explanation
+        new_result = state['result']
+        new_result['message'] = explanation
+        return {"result": new_result}
+
     def check_execution_status(self, state: AgentState):
         if state.get('error'):
             if "Security Violation" in state['error']:
@@ -102,7 +128,8 @@ class WorkflowEngine:
             "error": None,
             "retry_count": 0,
             "chat_history": chat_history,
-            "db_path": db_path
+            "db_path": db_path,
+            "explanation": ""
         }
         
         return self.workflow.invoke(initial_state)

@@ -29,6 +29,10 @@ env/
 ENV/
 .env
 
+# media 
+backend/src/img/*
+*.mp4
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -81,8 +85,7 @@ ehthumbs.db
 Thumbs.db
 
 # Project Specific
-# Ignore uploaded/generated files if you don't want them in repo
-backend/databases/
-# Keep the directory structure but ignore content (optional, uncomment if needed)
-# backend/databases/*
-# !backend/databases/.gitkeep
+# Ignore uploaded/generated files
+backend/databases/*.db
+backend/src/img/*
+
