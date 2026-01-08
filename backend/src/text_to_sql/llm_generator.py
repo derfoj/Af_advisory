@@ -9,14 +9,14 @@ from .llm_provider import LLMProvider
 
 class LLMGenerator:
     def __init__(self):
+        # Default LLM and chain setup
         llm_provider = LLMProvider()
-        self.llm = llm_provider.get_llm()
+        self.default_llm = llm_provider.get_llm()
 
-        # Load prompt from config or use default
-        prompt_template = GLOBAL_CONFIG.get('prompts', {}).get('system_prompt')
-        
-        if not prompt_template:
-            prompt_template = (
+        # Load prompts from config or use default
+        self.system_prompt_template = GLOBAL_CONFIG.get('prompts', {}).get('system_prompt')
+        if not self.system_prompt_template:
+            self.system_prompt_template = (
                 "You are an expert SQL data analyst.\n"
                 "Your goal is to generate a valid SQLite query to answer the user's question.\n\n"
                 "Rules:\n"
@@ -28,28 +28,66 @@ class LLMGenerator:
                 "Schema:\n{schema}\n{correction_instruction}"
             )
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", prompt_template),
-            MessagesPlaceholder(variable_name="chat_history"),
-            ("human", "{question}")
-        ])
+        self.answer_prompt_template = GLOBAL_CONFIG.get('prompts', {}).get('answer_prompt')
+        if not self.answer_prompt_template:
+            self.answer_prompt_template = (
+                "You are a helpful data assistant.\n"
+                "User Question: {question}\n"
+                "Data Result: {data_preview}\n\n"
+                "Provide a concise natural language answer based on the data."
+            )
+
+        self.default_chain = self._build_chain(self.default_llm, self.system_prompt_template, ["chat_history", "question", "schema", "correction_instruction"])
+    
+    def _build_chain(self, llm, template, input_variables):
+        messages = [("system", template)]
+        if "chat_history" in input_variables:
+             messages.append(MessagesPlaceholder(variable_name="chat_history"))
         
-        self.chain = prompt | self.llm | StrOutputParser()
+        # Add human message placeholder
+        # The prompt template might not verify all vars, but we construct the chat prompt here
+        if "question" in input_variables:
+             messages.append(("human", "{question}"))
+             
+        prompt = ChatPromptTemplate.from_messages(messages)
+        return prompt | llm | StrOutputParser()
+
+    def _get_chain(self, provider: str = None, model_name: str = None, prompt_type: str = "query"):
+        if not provider and not model_name:
+             if prompt_type == "query":
+                 return self.default_chain
+             else:
+                 # Build default explanation chain lazily or on fly
+                 return self._build_chain(self.default_llm, self.answer_prompt_template, ["question", "data_preview", "sql"])
+        
+        # Dynamic creation
+        llm = LLMProvider.get_llm(provider=provider, model_name=model_name)
+        if prompt_type == "query":
+            return self._build_chain(llm, self.system_prompt_template, ["chat_history", "question", "schema", "correction_instruction"])
+        else:
+            return self._build_chain(llm, self.answer_prompt_template, ["question", "data_preview", "sql"])
 
     def clean_sql(self, sql: str) -> str:
         """Remove markdown code fences and clean up the SQL."""
         sql = sql.strip()
         
-        # Remove ```sql ... ``` or ``` ... ```
-        sql = re.sub(r'^```(?:sql)?\s*', '', sql)
-        sql = re.sub(r'\s*```$', '', sql)
+        # Pattern to find markdown code blocks (sql, sqlite, or generic)
+        match = re.search(r'```\w*\s*(.*?)\s*```', sql, re.DOTALL | re.IGNORECASE)
+        if match:
+            sql = match.group(1)
         
-        # Remove any leading/trailing whitespace
         sql = sql.strip()
+        
+        # If it still doesn't start with SELECT, try to find the first SELECT
+        # This handles cases like "Here is the query: SELECT * FROM ..."
+        if not sql.upper().startswith("SELECT"):
+            match = re.search(r'(SELECT\s+.*)', sql, re.DOTALL | re.IGNORECASE)
+            if match:
+                sql = match.group(1)
         
         return sql
 
-    def generate_query(self, question: str, schema: str, chat_history: List[BaseMessage] = None, error: str = "") -> str:
+    def generate_query(self, question: str, schema: str, chat_history: List[BaseMessage] = None, error: str = "", provider: str = None, model_name: str = None) -> str:
         if chat_history is None:
             chat_history = []
             
@@ -63,11 +101,12 @@ class LLMGenerator:
             "chat_history": chat_history,
             "correction_instruction": correction_instruction
         }
-        print(f"--- LLM INVOCATION ---")
+        print(f"--- LLM INVOCATION (Provider: {provider or 'Default'}, Model: {model_name or 'Default'}) ---")
         print(f"Question: {question}")
         print(f"Schema length: {len(schema)} chars")
         
-        raw_sql = self.chain.invoke(invocation_params)
+        chain = self._get_chain(provider, model_name, "query")
+        raw_sql = chain.invoke(invocation_params)
         print(f"Raw LLM output: {raw_sql}")
         
         clean_sql = self.clean_sql(raw_sql)
@@ -75,32 +114,16 @@ class LLMGenerator:
         
         return clean_sql
 
-    def generate_explanation(self, question: str, sql: str, data: List[Dict[str, Any]]) -> str:
+    def generate_explanation(self, question: str, sql: str, data: List[Dict[str, Any]], provider: str = None, model_name: str = None) -> str:
         """
         Generates a natural language explanation of the data results.
         """
-        # Load prompt from config or use default
-        prompt_template = GLOBAL_CONFIG.get('prompts', {}).get('answer_prompt')
-        
-        if not prompt_template:
-            prompt_template = (
-                "You are a helpful data assistant.\n"
-                "User Question: {question}\n"
-                "Data Result: {data_preview}\n\n"
-                "Provide a concise natural language answer based on the data."
-            )
-
         # Format data preview (limit to first 5 rows to save tokens)
         data_preview = json.dumps(data[:5], indent=2, default=str)
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", prompt_template),
-            ("human", "Here is the data result. Please explain it.")
-        ])
+        print(f"--- GENERATING EXPLANATION (Provider: {provider or 'Default'}, Model: {model_name or 'Default'}) ---")
         
-        chain = prompt | self.llm | StrOutputParser()
-        
-        print(f"--- GENERATING EXPLANATION ---")
+        chain = self._get_chain(provider, model_name, "explanation")
         explanation = chain.invoke({
             "question": question,
             "sql": sql,

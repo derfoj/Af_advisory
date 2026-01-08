@@ -31,6 +31,8 @@ def run_query(request: QueryRequest = Body(...)):
             question=request.question,
             db_path=request.db_path,
             chat_history=chat_history_langchain,
+            provider=request.provider,
+            model_name=request.model_name
         )
         
         if result.get("error"):

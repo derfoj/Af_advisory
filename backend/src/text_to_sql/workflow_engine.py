@@ -16,7 +16,9 @@ class AgentState(TypedDict):
     retry_count: int
     chat_history: List[BaseMessage]
     db_path: str
-    explanation: str  # Added explanation field
+    explanation: str
+    provider: str
+    model_name: str
 
 class WorkflowEngine:
     def __init__(self):
@@ -59,7 +61,9 @@ class WorkflowEngine:
                 question=state['question'],
                 schema=state['schema'],
                 chat_history=state['chat_history'],
-                error=state.get('error')
+                error=state.get('error'),
+                provider=state.get('provider'),
+                model_name=state.get('model_name')
             )
             return {"sql": sql, "retry_count": state['retry_count'] + 1}
         except Exception as e:
@@ -96,7 +100,9 @@ class WorkflowEngine:
         explanation = self.llm_generator.generate_explanation(
             question=state['question'],
             sql=state['sql'],
-            data=result_data
+            data=result_data,
+            provider=state.get('provider'),
+            model_name=state.get('model_name')
         )
         
         # Augment the result object with the message/explanation
@@ -115,7 +121,7 @@ class WorkflowEngine:
                 return "error"
         return "success"
 
-    def run(self, question: str, db_path: str, chat_history: List[BaseMessage]):
+    def run(self, question: str, db_path: str, chat_history: List[BaseMessage], provider: str = None, model_name: str = None):
         schema = get_db_schema(db_path)
         if schema.startswith("Error"):
             return {"error": schema}
@@ -129,7 +135,9 @@ class WorkflowEngine:
             "retry_count": 0,
             "chat_history": chat_history,
             "db_path": db_path,
-            "explanation": ""
+            "explanation": "",
+            "provider": provider,
+            "model_name": model_name
         }
         
         return self.workflow.invoke(initial_state)

@@ -7,6 +7,7 @@ import ChatMessage from './components/ChatMessage';
 import DataPreview from './components/DataPreview';
 import ThinkingIndicator from './components/ThinkingIndicator';
 import SuggestionChips from './components/SuggestionChips';
+import ModelSelector from './components/ModelSelector';
 
 function App() {
   const [sessions, setSessions] = useState([]);
@@ -16,7 +17,12 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [dataPreview, setDataPreview] = useState(null);
   const [dataSummary, setDataSummary] = useState(null);
+
   const [showPreview, setShowPreview] = useState(true);
+
+  // Model Selection State
+  const [provider, setProvider] = useState('groq');
+  const [model, setModel] = useState('llama-3.3-70b-versatile');
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -114,6 +120,8 @@ function App() {
         body: JSON.stringify({
           question: userMessage.content.text,
           db_path: activeSession.dbPath,
+          provider: provider,
+          model_name: model,
           chat_history: messages.map(m => {
             if (typeof m.content === 'string') return { role: m.role, content: m.content };
 
@@ -213,6 +221,8 @@ function App() {
             AF-Advisory <span className="text-slate-400 font-normal text-xs ml-2">NL2SQL Assistant</span>
           </h1>
         </div>
+
+
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -285,6 +295,13 @@ function App() {
                 >
                   <Plus className="w-5 h-5" />
                 </button>
+
+                <ModelSelector
+                  provider={provider}
+                  setProvider={setProvider}
+                  model={model}
+                  setModel={setModel}
+                />
 
                 <input
                   type="text"

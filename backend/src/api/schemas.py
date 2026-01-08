@@ -18,3 +18,5 @@ class QueryRequest(BaseModel):
     question: str
     db_path: str
     chat_history: Optional[List[Message]] = []
+    provider: Optional[str] = None
+    model_name: Optional[str] = None
